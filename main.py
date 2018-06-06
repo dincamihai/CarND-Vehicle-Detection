@@ -404,7 +404,7 @@ def pipeline(state, slides, image):
                 cv2.DIST_L2, 0, 0.01, 0.01)
 
             line = np.vectorize(lambda X: vy/vx * (X - x) + y)
-            height = line(_obj['centroids'][-1][1])
+            height = line(mean_centroid[1])
             width = height * 1.2
 
             size = [width, height]
