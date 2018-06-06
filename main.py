@@ -44,6 +44,13 @@ HOG = {
 }
 
 
+def compute_avg_diff(points):
+    if len(points) > 1:
+        return np.mean([(it2-it1) for (it1,it2) in zip(points[0::2], points[1::2])])
+    else:
+        return 0
+
+
 # Define a function to return some characteristics of the dataset
 def get_data_stats(car_list, notcar_list):
     data_dict = {}
@@ -363,6 +370,43 @@ def pipeline(state, slides, image):
             (_obj['centroids'][-1][0]+_obj['size'][0], _obj['centroids'][-1][1]+_obj['size'][1]),
         ]
         if _obj['confidence'] >= CONFIDENCE_THRESHOLD:
+            mean_centroid = np.mean(np.array(_obj['centroids'][-50:]), axis=0).astype(np.int)
+            (vx, vy, x, y) = cv2.fitLine(
+                np.array([
+                    mean_centroid,
+                    (image.shape[1]//2, 430)
+                ]),
+                cv2.DIST_L2, 0, 0.01, 0.01)
+
+            # top = int((-x*vy/vx) + y)
+            # bottom = int(((image.shape[1] - x)*vy/vx) + y)
+
+            line = np.vectorize(lambda X: vy/vx * (X - x) + y)
+
+            avg_diff = np.int(compute_avg_diff(_obj['centroids'][-20:]))
+
+            if avg_diff < 0:
+                plotx = np.arange(_obj['centroids'][-1][0]+10*avg_diff, _obj['centroids'][-1][0])
+            else:
+                plotx = np.arange(_obj['centroids'][-1][0], _obj['centroids'][-1][0]+10*avg_diff)
+
+            if  avg_diff != 0:
+                ploty= line(plotx).astype(np.uint)
+
+                corrected_x = np.int(_obj['centroids'][-1][0] + avg_diff)
+                _obj['centroids'][-1] = np.array((corrected_x, np.int(line(corrected_x))))
+                if avg_diff < 0:
+                    cv2.line(annotated_image, (plotx[0], ploty[0]), (plotx[-1], ploty[-1]), (0, 255, 0), 2)
+                else:
+                    cv2.line(annotated_image, (plotx[0], ploty[0]), (plotx[-1], ploty[-1]), (255, 0, 0), 2)
+
+            cv2.circle(
+                annotated_image,
+                (_obj['centroids'][-1][0], mean_centroid[0]),
+                7,
+                (255, 0, 0),
+                thickness=-1,
+            )
             cv2.rectangle(annotated_image, bbox[0], bbox[1], _obj['color'], 3)
             cv2.circle(
                 annotated_image,
@@ -451,7 +495,7 @@ def main():
         # TODO set to 5
         state['frames_threshold'] = 1
         from moviepy.editor import VideoFileClip
-        video_in = VideoFileClip(arguments.video_in)  # .subclip(25, 50)
+        video_in = VideoFileClip(arguments.video_in)  # .subclip(35, 50)
         state['heatmap'] = np.zeros([video_in.size[1], video_in.size[0]])
         video_out = video_in.fl_image(partial(pipeline, state, [slide1, slide2]))
         video_out.write_videofile(arguments.video_out, audio=False)
