@@ -350,13 +350,6 @@ def pipeline(state, slides, image):
             }
             state['objects'][_uuid] = obj
         obj['increase_confidence'] = True
-        height = np.int(np.sqrt(cv2.contourArea(cnt)) * 0.4)
-        width = np.int(height * 1.3)
-        curr_size = np.array([width, height])
-        obj['size'] = (CENTROID_CHANGE_RATE * curr_size + (1-CENTROID_CHANGE_RATE) * obj.get('size', curr_size)).astype(np.int)
-        # approx = cv2.approxPolyDP(cnt, epsilon=10, closed=True)
-        # cv2.polylines(annotated_image, [approx], True, obj['color'], 3)
-        # cv2.rectangle(annotated_image, approx[0][0], approx[1][0], (0, 190, 0), 3)
 
     for _uuid, _obj in state['objects'].items():
         if _obj['increase_confidence']:
@@ -365,21 +358,16 @@ def pipeline(state, slides, image):
         else:
             _obj['confidence'] -= 1
         _obj['confidence'] = 0 if _obj['confidence'] < 0 else _obj['confidence']
-        bbox = [
-            (_obj['centroids'][-1][0]-_obj['size'][0], _obj['centroids'][-1][1]-_obj['size'][1]),
-            (_obj['centroids'][-1][0]+_obj['size'][0], _obj['centroids'][-1][1]+_obj['size'][1]),
-        ]
+
         if _obj['confidence'] >= CONFIDENCE_THRESHOLD:
-            mean_centroid = np.mean(np.array(_obj['centroids'][-50:]), axis=0).astype(np.int)
+            mean_centroid = np.mean(np.array(_obj['centroids'][-20:]), axis=0).astype(np.int)
+
             (vx, vy, x, y) = cv2.fitLine(
                 np.array([
                     mean_centroid,
                     (image.shape[1]//2, 430)
                 ]),
                 cv2.DIST_L2, 0, 0.01, 0.01)
-
-            # top = int((-x*vy/vx) + y)
-            # bottom = int(((image.shape[1] - x)*vy/vx) + y)
 
             line = np.vectorize(lambda X: vy/vx * (X - x) + y)
 
@@ -407,6 +395,24 @@ def pipeline(state, slides, image):
                 (255, 0, 0),
                 thickness=-1,
             )
+
+            (vx, vy, x, y) = cv2.fitLine(
+                np.array([
+                    (430, 25),
+                    (550, 150)
+                ]),
+                cv2.DIST_L2, 0, 0.01, 0.01)
+
+            line = np.vectorize(lambda X: vy/vx * (X - x) + y)
+            height = line(_obj['centroids'][-1][1])
+            width = height * 1.2
+
+            size = [width, height]
+
+            bbox = [
+                (_obj['centroids'][-1][0]-size[0], _obj['centroids'][-1][1]-size[1]),
+                (_obj['centroids'][-1][0]+size[0], _obj['centroids'][-1][1]+size[1]),
+            ]
             cv2.rectangle(annotated_image, bbox[0], bbox[1], _obj['color'], 3)
             cv2.circle(
                 annotated_image,
@@ -495,7 +501,7 @@ def main():
         # TODO set to 5
         state['frames_threshold'] = 1
         from moviepy.editor import VideoFileClip
-        video_in = VideoFileClip(arguments.video_in)  # .subclip(35, 50)
+        video_in = VideoFileClip(arguments.video_in)  # .subclip(10, 30)
         state['heatmap'] = np.zeros([video_in.size[1], video_in.size[0]])
         video_out = video_in.fl_image(partial(pipeline, state, [slide1, slide2]))
         video_out.write_videofile(arguments.video_out, audio=False)
