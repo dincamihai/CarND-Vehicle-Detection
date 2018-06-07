@@ -56,10 +56,15 @@ I ran out of memory when trying to train the SVC on all the available samples in
 #### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
 I am using a SVM with an `rbf` kernel with `gamma='auto'` and `C=10.0`.
+
 The code can be seen here: https://github.com/dincamihai/CarND-Vehicle-Detection/blob/master/main.py#L175-L214
+
 I've trained the classifier with 500 random car samples from the KITTI set and 3000 random non-car samples.
+
 I am also fitting a scaler and  I save both the classifier and the scaler to the disk because I need them later.
+
 In my submission they are archived (please see NOTES.md for instructions on how to extract them)
+
 To the HOG extracted features I am also adding the color features and the histogram features. https://github.com/dincamihai/CarND-Vehicle-Detection/blob/master/main.py#L126-L148
 
 ### Sliding Window Search
