@@ -107,14 +107,18 @@ The annotated video can be found here: https://github.com/dincamihai/CarND-Vehic
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
 I record the position of positive detection in each frame of the video and I use them to create a heatmap.
-At first I implement a threshold for filtering out the false positives, but because the classifier doesn't produce false positives when tried on the project video, I've decided to disable the threshold. The implementation can be seen here: https://github.com/dincamihai/CarND-Vehicle-Detection/blob/master/main.py#L297
-The filtering would work by ignoring weak positive detections overlap.
+
+At first I implement a threshold for filtering out the false positives, but because the classifier doesn't produce false positives in the project video, I've decided to disable the threshold. The implementation can be seen here: https://github.com/dincamihai/CarND-Vehicle-Detection/blob/master/main.py#L297
+The filtering works by ignoring weak positive detections overlap.
+
 I combine all the frame heatmaps in a global heatmap that tracks also the evolution of the detection in time.
 I use `cv2.findContours()` to identify the idividual blobs in the global heatmap.
 For finding the contours I've also implemented a threshold that would filter out transient detections (detections that appear in a single frame for example)
 The code can be seen here: https://github.com/dincamihai/CarND-Vehicle-Detection/blob/master/main.py#L312-L313
+
 Once I have the contours/objects I keep track of the each of them for the entire length of the video.
 In order to overcome the overlapping objects problem, I've implemented a mechanism that uses an euclidian distance radius to merge objects that are close to eachother. (two cars overlap) https://github.com/dincamihai/CarND-Vehicle-Detection/blob/master/main.py#L321-L336
+
 I also remove objects that are no longer needed.
 
 I have generated a combined video that shows both the annotated video and also the changing heatmap (greed=increase, red=decrease, gray=current value)
@@ -129,4 +133,6 @@ https://github.com/dincamihai/CarND-Vehicle-Detection/blob/master/project_combin
 
 In order to prevent running out of memory when training, I have trained the classifier on a small dataset (only 500 car examples). This works for the project video but  I don't expect it to work with any video input. This can be improved by training on a bigger dataset.
 
-Even though the window is tracking the cars for the entire video, I think the tracking can be improved to be smoother.
+Even though the window is tracking the cars for the entire video, I think the tracking movement can be improved to be smoother and more precise.
+
+I was also thinking about identifying the cars by comparing the extracted features. (I did not implement this though since it was not needed)
